@@ -1,0 +1,618 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>KAWU - Kenya Aviation Workers Union Portal</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://unpkg.com/html5-qrcode"></script>
+    <style>
+        .brand-navy { background-color: #0a192f; }
+        .brand-gold { color: #d4af37; }
+        .bg-brand-gold { background-color: #d4af37; }
+    </style>
+</head>
+<body class="bg-slate-50 min-h-screen text-slate-800">
+    <!-- Header -->
+    <header class="brand-navy text-white shadow-md">
+        <div class="max-w-7xl mx-auto px-4 py-4 flex flex-col md:flex-row justify-between items-center">
+            <div class="flex items-center space-x-3">
+                <div class="bg-amber-500 p-2 rounded-lg font-bold text-slate-900">KAWU</div>
+                <div>
+                    <h1 class="text-xl font-bold tracking-wide">KENYA AVIATION WORKERS UNION</h1>
+                    <p class="text-xs text-slate-300">Member Registration & Verification System</p>
+                </div>
+            </div>
+            <nav class="mt-4 md:mt-0 flex space-x-2 bg-slate-800 p-1 rounded-lg">
+                <button onclick="switchTab('register')" id="btn-register" class="px-4 py-2 text-sm font-semibold rounded-md bg-amber-500 text-slate-900 transition">Register</button>
+                <button onclick="switchTab('query')" id="btn-query" class="px-4 py-2 text-sm font-semibold rounded-md text-slate-300 hover:text-white transition">Verify / QR</button>
+                <button onclick="switchTab('admin')" id="btn-admin" class="px-4 py-2 text-sm font-semibold rounded-md text-slate-300 hover:text-white transition">Admin Panel</button>
+            </nav>
+        </div>
+    </header>
+
+    <main class="max-w-5xl mx-auto px-4 py-8">
+        <!-- 1. REGISTRATION TAB -->
+        <section id="tab-register" class="bg-white rounded-xl shadow-sm border border-slate-200 p-6 md:p-8">
+            <div class="border-b pb-4 mb-6 flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
+                <div>
+                    <h2 class="text-2xl font-bold text-slate-900">Worker Registration Form</h2>
+                    <p class="text-sm text-slate-500">Fill in details or scan a member QR code.</p>
+                </div>
+                <div class="flex space-x-2">
+                    <button onclick="toggleShareableQRModal(true)" class="bg-amber-500 hover:bg-amber-600 text-slate-900 px-3 py-1.5 rounded-lg text-sm font-bold flex items-center space-x-1 shadow-sm">
+                        <span>📱 Shareable Reg QR</span>
+                    </button>
+                    <button onclick="toggleScanner('reg-scanner-container')" class="bg-slate-100 hover:bg-slate-200 text-slate-700 px-3 py-1.5 rounded-lg text-sm font-medium flex items-center space-x-1">
+                        <span>📷 Scan QR</span>
+                    </button>
+                </div>
+            </div>
+
+            <div id="reg-scanner-container" class="hidden mb-6 p-4 bg-slate-50 border rounded-xl">
+                <div id="reader-reg" class="w-full max-w-md mx-auto"></div>
+                <p class="text-xs text-center text-slate-500 mt-2">Point camera at QR code</p>
+            </div>
+
+            <form id="registrationForm" onsubmit="handleRegistration(event)" class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <div>
+                    <label class="block text-sm font-medium text-slate-700 mb-1">Full Name</label>
+                    <input type="text" id="reg_name" required class="w-full px-4 py-2 border rounded-lg focus:ring-2 focus:ring-amber-500 focus:outline-none" placeholder="e.g. Peter John">
+                </div>
+                <div>
+                    <label class="block text-sm font-medium text-slate-700 mb-1">ID Number</label>
+                    <input type="text" id="reg_id" required class="w-full px-4 py-2 border rounded-lg focus:ring-2 focus:ring-amber-500 focus:outline-none" placeholder="e.g. 12345678">
+                </div>
+                <div>
+                    <label class="block text-sm font-medium text-slate-700 mb-1">Staff Number</label>
+                    <input type="text" id="reg_staff" required class="w-full px-4 py-2 border rounded-lg focus:ring-2 focus:ring-amber-500 focus:outline-none" placeholder="e.g. STF-10293">
+                </div>
+                <div>
+                    <label class="block text-sm font-medium text-slate-700 mb-1">Gender</label>
+                    <select id="reg_gender" required class="w-full px-4 py-2 border rounded-lg focus:ring-2 focus:ring-amber-500 focus:outline-none">
+                        <option value="">Select Gender</option>
+                        <option value="Male">Male</option>
+                        <option value="Female">Female</option>
+                        <option value="Other">Other</option>
+                    </select>
+                </div>
+                <div>
+                    <label class="block text-sm font-medium text-slate-700 mb-1">Employer Category</label>
+                    <select id="reg_employer" required class="w-full px-4 py-2 border rounded-lg focus:ring-2 focus:ring-amber-500 focus:outline-none">
+                        <option value="">Loading employers...</option>
+                    </select>
+                </div>
+                <div class="md:col-span-2 pt-4">
+                    <button type="submit" class="w-full brand-navy text-white font-semibold py-3 rounded-lg hover:bg-slate-800 transition shadow">
+                        Complete Registration & Generate QR Badge
+                    </button>
+                </div>
+            </form>
+
+            <div id="reg-success-card" class="hidden mt-8 p-6 bg-emerald-50 border border-emerald-200 rounded-xl text-center">
+                <h3 class="text-lg font-bold text-emerald-800 mb-2">Registration Successful!</h3>
+                <p class="text-sm text-emerald-600 mb-4">Registration Number: <span id="success-reg-no" class="font-bold"></span></p>
+                <div class="bg-white inline-block p-4 rounded-xl shadow-sm border mb-4">
+                    <img id="success-qr-img" src="" alt="QR Badge" class="w-40 h-40 mx-auto">
+                </div>
+                <div>
+                    <button onclick="window.print()" class="bg-emerald-600 text-white px-6 py-2 rounded-lg font-medium text-sm hover:bg-emerald-700">Print Membership Badge</button>
+                </div>
+            </div>
+        </section>
+
+        <!-- 2. VERIFY / QUERY TAB -->
+        <section id="tab-query" class="hidden bg-white rounded-xl shadow-sm border border-slate-200 p-6 md:p-8">
+            <h2 class="text-2xl font-bold text-slate-900 mb-2">Member Verification & QR Query</h2>
+            <p class="text-sm text-slate-500 mb-6">Scan a member's QR code or search by Reg No, ID Number, or Staff Number.</p>
+            
+            <div class="flex flex-col md:flex-row gap-4 mb-6">
+                <input type="text" id="query_input" placeholder="Enter Reg No, ID Number, or Staff Number" class="flex-1 px-4 py-2 border rounded-lg focus:ring-2 focus:ring-amber-500 focus:outline-none">
+                <button onclick="queryMember()" class="brand-navy text-white px-6 py-2 rounded-lg font-semibold hover:bg-slate-800 transition">Search Record</button>
+                <button onclick="toggleScanner('query-scanner-container')" class="bg-amber-500 text-slate-900 px-4 py-2 rounded-lg font-semibold hover:bg-amber-600 transition">Scan QR</button>
+            </div>
+
+            <div id="query-scanner-container" class="hidden mb-6 p-4 bg-slate-50 border rounded-xl">
+                <div id="reader-query" class="w-full max-w-md mx-auto"></div>
+            </div>
+
+            <div id="query-result" class="hidden p-6 border rounded-xl bg-slate-50"></div>
+        </section>
+
+        <!-- 3. ADMIN PANEL TAB (Password Protected) -->
+        <section id="tab-admin" class="hidden bg-white rounded-xl shadow-sm border border-slate-200 p-6 md:p-8">
+            <!-- Admin Login Gate -->
+            <div id="admin-login-gate" class="max-w-md mx-auto py-12 text-center">
+                <div class="bg-slate-100 p-4 rounded-full w-16 h-16 flex items-center justify-center mx-auto mb-4">🔒</div>
+                <h3 class="text-xl font-bold text-slate-900 mb-2">Admin Portal Restricted</h3>
+                <p class="text-sm text-slate-500 mb-6">Please enter the secure admin password to manage union records.</p>
+                <form onsubmit="handleAdminLogin(event)" class="space-y-4">
+                    <input type="password" id="admin_password_input" required placeholder="Enter admin password" class="w-full px-4 py-2 border rounded-lg text-center focus:ring-2 focus:ring-amber-500 focus:outline-none">
+                    <button type="submit" class="w-full brand-navy text-white font-semibold py-2.5 rounded-lg hover:bg-slate-800 transition">Unlock Admin Portal</button>
+                </form>
+            </div>
+
+            <!-- Admin Content (Unlocked) -->
+            <div id="admin-content" class="hidden">
+                <div class="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 mb-6 border-b pb-4">
+                    <div>
+                        <h2 class="text-2xl font-bold text-slate-900">Admin Management Portal</h2>
+                        <p class="text-sm text-slate-500">Manage employer categories, registered members, and backups.</p>
+                    </div>
+                    <div class="flex space-x-2">
+                        <button onclick="togglePasswordResetModal(true)" class="text-xs bg-amber-500 hover:bg-amber-600 text-slate-900 px-3 py-1.5 rounded-lg font-bold">🔑 Change Password</button>
+                        <button onclick="handleAdminLogout()" class="text-xs bg-slate-200 hover:bg-slate-300 text-slate-700 px-3 py-1.5 rounded-lg font-medium">Lock / Logout</button>
+                    </div>
+                </div>
+
+                <div class="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
+                    <div class="bg-slate-50 p-4 border rounded-xl md:col-span-1">
+                        <h3 class="font-bold text-slate-800 mb-3 text-sm">Add New Employer Category</h3>
+                        <form onsubmit="addEmployer(event)" class="space-y-3">
+                            <input type="text" id="new_employer_name" required placeholder="e.g. Swissport Kenya" class="w-full px-3 py-2 border rounded-lg text-sm">
+                            <button type="submit" class="w-full brand-navy text-white py-2 rounded-lg text-sm font-medium hover:bg-slate-800">Add Category</button>
+                        </form>
+                    </div>
+                    <div class="bg-slate-50 p-4 border rounded-xl md:col-span-2 flex flex-col justify-center">
+                        <h3 class="font-bold text-slate-800 mb-1 text-sm">Union Administration Guidelines</h3>
+                        <p class="text-xs text-slate-600 leading-relaxed">Admins can view all registered members across all employer categories, review and update member statuses, and export directory records to Excel or PDF.</p>
+                    </div>
+                </div>
+
+                <!-- Database Backup & Recovery Utility Section -->
+                <div class="bg-slate-50 border p-5 rounded-xl mb-8">
+                    <h3 class="font-bold text-slate-900 text-sm mb-1">Database Backup & Recovery</h3>
+                    <p class="text-xs text-slate-600 mb-3">Download a complete backup of your SQLite database (`kawu.db`) or restore system records from a previous backup file.</p>
+                    <div class="flex flex-col md:flex-row gap-4 items-center">
+                        <button onclick="window.location.href='/api/admin/backup'" class="w-full md:w-auto brand-navy text-white px-4 py-2 rounded-lg text-xs font-semibold hover:bg-slate-800 transition shadow">
+                            📥 Download Database Backup (.db)
+                        </button>
+                        <form onsubmit="restoreDatabase(event)" class="flex items-center gap-2 w-full md:w-auto">
+                            <input type="file" id="restore_file_input" required accept=".db" class="text-xs border p-1.5 rounded-lg bg-white w-full md:w-auto">
+                            <button type="submit" class="bg-amber-600 hover:bg-amber-700 text-white px-3 py-2 rounded-lg text-xs font-semibold transition">
+                                🔄 Restore DB
+                            </button>
+                        </form>
+                    </div>
+                </div>
+
+                <!-- Registered Members Section -->
+                <div class="mb-8">
+                    <div class="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 mb-4">
+                        <div class="flex flex-wrap items-center gap-2">
+                            <h3 class="font-bold text-slate-900 text-lg mr-2">Registered Members Directory</h3>
+                            <button onclick="window.location.href='/api/admin/export-excel'" class="bg-emerald-600 hover:bg-emerald-700 text-white px-3 py-1.5 rounded-lg text-xs font-semibold flex items-center space-x-1 transition shadow-sm">
+                                <span>📊 Export Excel (.xlsx)</span>
+                            </button>
+                            <button onclick="window.location.href='/api/admin/export-pdf'" class="bg-rose-600 hover:bg-rose-700 text-white px-3 py-1.5 rounded-lg text-xs font-semibold flex items-center space-x-1 transition shadow-sm">
+                                <span>📄 Export PDF</span>
+                            </button>
+                        </div>
+                        <div class="flex flex-col sm:flex-row gap-2 w-full md:w-auto">
+                            <select id="admin_employer_filter" onchange="filterAdminMembers()" class="px-3 py-1.5 text-sm border rounded-lg bg-white focus:outline-none focus:ring-2 focus:ring-amber-500">
+                                <option value="">All Employers</option>
+                            </select>
+                            <input type="text" id="admin_member_search" placeholder="Search name, ID, staff, reg no..." onkeyup="filterAdminMembers()" class="px-3 py-1.5 text-sm border rounded-lg w-full sm:w-64 focus:outline-none focus:ring-2 focus:ring-amber-500">
+                        </div>
+                    </div>
+                    <div class="overflow-x-auto max-h-96 overflow-y-auto border rounded-xl">
+                        <table class="w-full text-left border-collapse text-sm">
+                            <thead class="bg-slate-100 text-slate-700 sticky top-0">
+                                <tr class="border-b">
+                                    <th class="p-3">Reg No</th>
+                                    <th class="p-3">Full Name</th>
+                                    <th class="p-3">ID Number</th>
+                                    <th class="p-3">Staff Number</th>
+                                    <th class="p-3">Gender</th>
+                                    <th class="p-3">Employer</th>
+                                    <th class="p-3">Reg Date</th>
+                                    <th class="p-3">Status</th>
+                                    <th class="p-3 text-right">Update Status</th>
+                                </tr>
+                            </thead>
+                            <tbody id="admin-members-table">
+                                <tr><td colspan="9" class="p-4 text-center text-slate-400">Loading members...</td></tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </section>
+    </main>
+
+    <!-- Shareable Registration QR Modal -->
+    <div id="shareable-qr-modal" class="hidden fixed inset-0 bg-black/50 flex items-center justify-center p-4 z-50">
+        <div class="bg-white rounded-2xl max-w-md w-full p-6 text-center shadow-xl">
+            <h3 class="text-xl font-bold text-slate-900 mb-1">Shareable Member Registration QR</h3>
+            <p class="text-xs text-slate-500 mb-4">Print or share this QR code on union notice boards or flyers. Members can scan it with their phone camera to open and fill the registration form instantly.</p>
+            <div class="bg-slate-50 border p-4 rounded-xl inline-block mb-4 shadow-inner">
+                <img id="shareable-qr-code-img" src="" alt="Registration QR" class="w-48 h-48 mx-auto">
+            </div>
+            <p class="text-xs font-mono text-slate-600 bg-slate-100 p-2 rounded mb-6 break-all" id="shareable-url-text"></p>
+            <div class="flex space-x-3">
+                <button onclick="window.print()" class="flex-1 brand-navy text-white py-2.5 rounded-xl text-sm font-semibold hover:bg-slate-800">Print Poster</button>
+                <button onclick="toggleShareableQRModal(false)" class="flex-1 bg-slate-200 text-slate-800 py-2.5 rounded-xl text-sm font-semibold hover:bg-slate-300">Close</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Admin Password Reset Modal (Unlocked Admins Only) -->
+    <div id="admin-password-reset-modal" class="hidden fixed inset-0 bg-black/50 flex items-center justify-center p-4 z-50">
+        <div class="bg-white rounded-2xl max-w-md w-full p-6 shadow-xl">
+            <div class="flex justify-between items-center mb-4">
+                <h3 class="text-lg font-bold text-slate-900">Change Admin Password</h3>
+                <button onclick="togglePasswordResetModal(false)" class="text-slate-400 hover:text-slate-600 font-bold text-lg">&times;</button>
+            </div>
+            <p class="text-xs text-slate-500 mb-4">Enter your new secure administrator password below.</p>
+            <form onsubmit="handleAdminPasswordReset(event)" class="space-y-4">
+                <div>
+                    <label class="block text-xs font-medium text-slate-700 mb-1">New Admin Password</label>
+                    <input type="password" id="reset_new_password" required placeholder="At least 6 characters" class="w-full px-3 py-2 border rounded-lg text-sm focus:ring-2 focus:ring-amber-500 focus:outline-none">
+                </div>
+                <div class="flex space-x-3 pt-2">
+                    <button type="submit" class="flex-1 brand-navy text-white py-2.5 rounded-xl text-sm font-semibold hover:bg-slate-800">Update Password</button>
+                    <button type="button" onclick="togglePasswordResetModal(false)" class="flex-1 bg-slate-200 text-slate-800 py-2.5 rounded-xl text-sm font-semibold hover:bg-slate-300">Cancel</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <script>
+        let html5QrCodeReg = null;
+        let html5QrCodeQuery = null;
+        let allAdminMembers = [];
+
+        function switchTab(tab) {
+            ['register', 'query', 'admin'].forEach(t => {
+                document.getElementById(`tab-${t}`).classList.add('hidden');
+                document.getElementById(`btn-${t}`).classList.remove('bg-amber-500', 'text-slate-900');
+                document.getElementById(`btn-${t}`).classList.add('text-slate-300');
+            });
+            document.getElementById(`tab-${tab}`).classList.remove('hidden');
+            document.getElementById(`btn-${tab}`).classList.add('bg-amber-500', 'text-slate-900');
+            document.getElementById(`btn-${tab}`).classList.remove('text-slate-300');
+            if (tab === 'admin') loadAdminData();
+        }
+
+        async function loadEmployers() {
+            try {
+                const res = await fetch('/api/employers');
+                const data = await res.json();
+                const select = document.getElementById('reg_employer');
+                select.innerHTML = '<option value="">Select Employer Category</option>';
+                data.employers.forEach(emp => {
+                    select.innerHTML += `<option value="${emp.id}">${emp.name}</option>`;
+                });
+            } catch (err) {
+                console.error("Failed to load employers", err);
+            }
+        }
+
+        async function handleRegistration(e) {
+            e.preventDefault();
+            const payload = {
+                full_name: document.getElementById('reg_name').value,
+                id_number: document.getElementById('reg_id').value,
+                staff_number: document.getElementById('reg_staff').value,
+                gender: document.getElementById('reg_gender').value,
+                employer_id: document.getElementById('reg_employer').value
+            };
+
+            try {
+                const res = await fetch('/api/members/register', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(payload)
+                });
+                const data = await res.json();
+                if (res.ok) {
+                    document.getElementById('success-reg-no').innerText = data.member.reg_number;
+                    document.getElementById('success-qr-img').src = data.member.qr_code_url;
+                    document.getElementById('reg-success-card').classList.remove('hidden');
+                    document.getElementById('registrationForm').reset();
+                } else {
+                    alert(data.error || "Registration failed");
+                }
+            } catch (err) {
+                alert("Network error during registration");
+            }
+        }
+
+        async function queryMember(searchTerm = null) {
+            const term = searchTerm || document.getElementById('query_input').value;
+            if (!term) return alert("Please enter or scan a registration number, ID number, or staff number");
+
+            try {
+                const res = await fetch(`/api/members/query?search=${encodeURIComponent(term)}`);
+                const data = await res.json();
+                const box = document.getElementById('query-result');
+                box.classList.remove('hidden');
+
+                if (data.found) {
+                    const m = data.member;
+                    box.innerHTML = `
+                        <div class="flex flex-col md:flex-row items-center justify-between">
+                            <div>
+                                <span class="px-2.5 py-1 text-xs font-bold rounded-full ${m.status === 'Active' ? 'bg-emerald-100 text-emerald-800' : m.status === 'Suspended' ? 'bg-amber-100 text-amber-800' : 'bg-rose-100 text-rose-800'}">${m.status}</span>
+                                <h3 class="text-xl font-bold text-slate-900 mt-2">${m.full_name}</h3>
+                                <p class="text-sm text-slate-600">Reg No: <span class="font-semibold text-slate-900">${m.reg_number}</span></p>
+                                <p class="text-sm text-slate-600">ID Number: ${m.id_number} | Staff Number: ${m.staff_number}</p>
+                                <p class="text-sm text-slate-600">Gender: ${m.gender} | Employer: <span class="font-semibold">${m.employer}</span></p>
+                                <p class="text-xs text-slate-400 mt-1">Registered on: ${m.reg_date}</p>
+                            </div>
+                            <div class="mt-4 md:mt-0 bg-white p-2 border rounded-xl shadow-sm">
+                                <img src="${m.qr_code_path}" class="w-32 h-32">
+                            </div>
+                        </div>
+                    `;
+                } else {
+                    box.innerHTML = `<p class="text-rose-600 font-medium">${data.message}</p>`;
+                }
+            } catch (err) {
+                alert("Error querying record");
+            }
+        }
+
+        async function handleAdminLogin(e) {
+            e.preventDefault();
+            const password = document.getElementById('admin_password_input').value;
+            const res = await fetch('/api/admin/login', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ password })
+            });
+            const data = await res.json();
+            if (res.ok) {
+                document.getElementById('admin-login-gate').classList.add('hidden');
+                document.getElementById('admin-content').classList.remove('hidden');
+                loadAdminData();
+            } else {
+                alert(data.error);
+            }
+        }
+
+        async function handleAdminLogout() {
+            await fetch('/api/admin/logout', { method: 'POST' });
+            document.getElementById('admin-content').classList.add('hidden');
+            document.getElementById('admin-login-gate').classList.remove('hidden');
+            document.getElementById('admin_password_input').value = '';
+        }
+
+        function togglePasswordResetModal(show) {
+            const modal = document.getElementById('admin-password-reset-modal');
+            if (show) {
+                modal.classList.remove('hidden');
+            } else {
+                modal.classList.add('hidden');
+                document.getElementById('reset_new_password').value = '';
+            }
+        }
+
+        async function handleAdminPasswordReset(e) {
+            e.preventDefault();
+            const new_password = document.getElementById('reset_new_password').value;
+
+            try {
+                const res = await fetch('/api/admin/reset-password', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ new_password })
+                });
+                const data = await res.json();
+                if (res.ok) {
+                    alert(data.message);
+                    togglePasswordResetModal(false);
+                } else {
+                    alert(data.error || "Password reset failed");
+                }
+            } catch (err) {
+                alert("Network error during password reset");
+            }
+        }
+
+        async function loadAdminData() {
+            await loadAdminEmployersDropdown();
+            await loadAdminMembers();
+        }
+
+        async function loadAdminEmployersDropdown() {
+            try {
+                const res = await fetch('/api/admin/employers-list');
+                if (res.ok) {
+                    const data = await res.json();
+                    const select = document.getElementById('admin_employer_filter');
+                    select.innerHTML = '<option value="">All Employers</option>';
+                    data.employers.forEach(emp => {
+                        select.innerHTML += `<option value="${emp.name}">${emp.name}</option>`;
+                    });
+                }
+            } catch (err) {
+                console.error("Failed to load admin employer filter list", err);
+            }
+        }
+
+        async function loadAdminMembers() {
+            try {
+                const res = await fetch('/api/admin/members');
+                if (res.status === 401) {
+                    document.getElementById('admin-content').classList.add('hidden');
+                    document.getElementById('admin-login-gate').classList.remove('hidden');
+                    return;
+                }
+                const data = await res.json();
+                allAdminMembers = data.members;
+                filterAdminMembers();
+            } catch (err) {
+                console.error("Failed to load members", err);
+            }
+        }
+
+        function renderAdminMembers(members) {
+            const tbody = document.getElementById('admin-members-table');
+            tbody.innerHTML = '';
+            if (members.length === 0) {
+                tbody.innerHTML = `<tr><td colspan="9" class="p-4 text-center text-slate-400">No registered members found</td></tr>`;
+                return;
+            }
+            members.forEach(m => {
+                tbody.innerHTML += `
+                    <tr class="border-b hover:bg-slate-50">
+                        <td class="p-3 font-semibold text-slate-900">${m.reg_number}</td>
+                        <td class="p-3 font-medium">${m.full_name}</td>
+                        <td class="p-3 text-slate-600">${m.id_number}</td>
+                        <td class="p-3 text-slate-600">${m.staff_number}</td>
+                        <td class="p-3 text-slate-600">${m.gender}</td>
+                        <td class="p-3 text-slate-600">${m.employer}</td>
+                        <td class="p-3 text-slate-500 text-xs">${m.reg_date}</td>
+                        <td class="p-3">
+                            <span class="px-2.5 py-1 text-xs font-bold rounded-full ${m.status === 'Active' ? 'bg-emerald-100 text-emerald-800' : m.status === 'Suspended' ? 'bg-amber-100 text-amber-800' : 'bg-rose-100 text-rose-800'}">${m.status}</span>
+                        </td>
+                        <td class="p-3 text-right">
+                            <select onchange="updateMemberStatus(${m.id}, this.value)" class="text-xs border rounded-md px-2 py-1 bg-white focus:outline-none focus:ring-1 focus:ring-amber-500">
+                                <option value="" disabled selected>Change Status...</option>
+                                <option value="Active" ${m.status === 'Active' ? 'disabled' : ''}>Active</option>
+                                <option value="Suspended" ${m.status === 'Suspended' ? 'disabled' : ''}>Suspended</option>
+                                <option value="Exited" ${m.status === 'Exited' ? 'disabled' : ''}>Exited</option>
+                            </select>
+                        </td>
+                    </tr>
+                `;
+            });
+        }
+
+        async function updateMemberStatus(memberId, newStatus) {
+            if (!confirm(`Are you sure you want to change this member's status to ${newStatus}?`)) {
+                loadAdminMembers();
+                return;
+            }
+            try {
+                const res = await fetch(`/api/admin/members/${memberId}/status`, {
+                    method: 'PUT',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ status: newStatus })
+                });
+                const data = await res.json();
+                if (res.ok) {
+                    alert(data.message);
+                    loadAdminMembers();
+                } else {
+                    alert(data.error || "Failed to update status");
+                    loadAdminMembers();
+                }
+            } catch (err) {
+                alert("Network error while updating member status");
+                loadAdminMembers();
+            }
+        }
+
+        function filterAdminMembers() {
+            const query = document.getElementById('admin_member_search').value.toLowerCase();
+            const selectedEmployer = document.getElementById('admin_employer_filter').value;
+
+            const filtered = allAdminMembers.filter(m => {
+                const matchesSearch = 
+                    m.full_name.toLowerCase().includes(query) ||
+                    m.reg_number.toLowerCase().includes(query) ||
+                    m.id_number.toLowerCase().includes(query) ||
+                    m.staff_number.toLowerCase().includes(query) ||
+                    m.employer.toLowerCase().includes(query);
+
+                const matchesEmployer = !selectedEmployer || m.employer === selectedEmployer;
+
+                return matchesSearch && matchesEmployer;
+            });
+
+            renderAdminMembers(filtered);
+        }
+
+        async function addEmployer(e) {
+            e.preventDefault();
+            const name = document.getElementById('new_employer_name').value;
+            const res = await fetch('/api/employers', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ name })
+            });
+            const data = await res.json();
+            if (res.ok) {
+                alert(data.message);
+                document.getElementById('new_employer_name').value = '';
+                loadEmployers();
+                loadAdminEmployersDropdown();
+            } else {
+                alert(data.error);
+            }
+        }
+
+        async function restoreDatabase(e) {
+            e.preventDefault();
+            if (!confirm("WARNING: Restoring a database will overwrite all current members. Are you sure?")) return;
+
+            const fileInput = document.getElementById('restore_file_input').files[0];
+            const formData = new FormData();
+            formData.append('database_file', fileInput);
+
+            try {
+                const res = await fetch('/api/admin/restore', {
+                    method: 'POST',
+                    body: formData
+                });
+                const data = await res.json();
+                if (res.ok) {
+                    alert(data.message);
+                    location.reload();
+                } else {
+                    alert(data.error || "Restore failed");
+                }
+            } catch (err) {
+                alert("Network error during database restoration");
+            }
+        }
+
+        function toggleShareableQRModal(show) {
+            const modal = document.getElementById('shareable-qr-modal');
+            if (show) {
+                const currentUrl = window.location.origin + "/";
+                document.getElementById('shareable-url-text').innerText = currentUrl;
+                document.getElementById('shareable-qr-code-img').src = `https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=${encodeURIComponent(currentUrl)}`;
+                modal.classList.remove('hidden');
+            } else {
+                modal.classList.add('hidden');
+            }
+        }
+
+        function toggleScanner(containerId) {
+            const container = document.getElementById(containerId);
+            container.classList.toggle('hidden');
+            const isReg = containerId.includes('reg');
+            const readerId = isReg ? 'reader-reg' : 'reader-query';
+
+            if (!container.classList.contains('hidden')) {
+                const scanner = new Html5Qrcode(readerId);
+                if (isReg) html5QrCodeReg = scanner; else html5QrCodeQuery = scanner;
+
+                scanner.start(
+                    { facingMode: "environment" },
+                    { fps: 10, qrbox: 250 },
+                    (decodedText) => {
+                        scanner.stop();
+                        container.classList.add('hidden');
+                        if (isReg) {
+                            alert("QR Code scanned successfully!");
+                        } else {
+                            document.getElementById('query_input').value = decodedText;
+                            queryMember(decodedText);
+                        }
+                    },
+                    (error) => {}
+                ).catch(err => alert("Camera permission denied or unavailable"));
+            } else {
+                if (isReg && html5QrCodeReg) html5QrCodeReg.stop();
+                if (!isReg && html5QrCodeQuery) html5QrCodeQuery.stop();
+            }
+        }
+
+        loadEmployers();
+    </script>
+</body>
+</html>
