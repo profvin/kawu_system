@@ -88,17 +88,6 @@
                     </button>
                 </div>
             </form>
-
-            <div id="reg-success-card" class="hidden mt-8 p-6 bg-emerald-50 border border-emerald-200 rounded-xl text-center">
-                <h3 class="text-lg font-bold text-emerald-800 mb-2">Registration Successful!</h3>
-                <p class="text-sm text-emerald-600 mb-4">Registration Number: <span id="success-reg-no" class="font-bold"></span></p>
-                <div class="bg-white inline-block p-4 rounded-xl shadow-sm border mb-4">
-                    <img id="success-qr-img" src="" alt="QR Badge" class="w-40 h-40 mx-auto">
-                </div>
-                <div>
-                    <button onclick="window.print()" class="bg-emerald-600 text-white px-6 py-2 rounded-lg font-medium text-sm hover:bg-emerald-700">Print Membership Badge</button>
-                </div>
-            </div>
         </section>
 
         <!-- 2. VERIFY / QUERY TAB -->
@@ -236,7 +225,7 @@
         </div>
     </div>
 
-    <!-- Admin Password Reset Modal (Unlocked Admins Only) -->
+    <!-- Admin Password Reset Modal -->
     <div id="admin-password-reset-modal" class="hidden fixed inset-0 bg-black/50 flex items-center justify-center p-4 z-50">
         <div class="bg-white rounded-2xl max-w-md w-full p-6 shadow-xl">
             <div class="flex justify-between items-center mb-4">
@@ -254,6 +243,30 @@
                     <button type="button" onclick="togglePasswordResetModal(false)" class="flex-1 bg-slate-200 text-slate-800 py-2.5 rounded-xl text-sm font-semibold hover:bg-slate-300">Cancel</button>
                 </div>
             </form>
+        </div>
+    </div>
+
+    <!-- Prominent Success & QR Badge Overlay Modal -->
+    <div id="registration-success-modal" class="hidden fixed inset-0 bg-black/80 flex items-center justify-center p-4 z-50">
+        <div class="bg-white rounded-2xl max-w-lg w-full p-8 text-center shadow-2xl border-4 border-amber-500">
+            <div class="bg-emerald-100 text-emerald-800 font-bold text-sm px-4 py-1.5 rounded-full inline-block mb-3">
+                ✓ Registration Successful
+            </div>
+            <h3 class="text-2xl font-bold text-slate-900 mb-1">KAWU Member Badge</h3>
+            <p class="text-sm text-slate-500 mb-4">Registration Number: <span id="modal-success-reg-no" class="font-mono font-bold text-slate-900 text-base"></span></p>
+            
+            <div class="bg-slate-50 border-2 border-slate-200 p-4 rounded-xl inline-block mb-6 shadow-inner">
+                <img id="modal-success-qr-img" src="" alt="QR Badge" class="w-48 h-48 mx-auto">
+            </div>
+
+            <div class="flex flex-col sm:flex-row gap-3">
+                <button onclick="window.print()" class="flex-1 bg-emerald-600 hover:bg-emerald-700 text-white font-semibold py-3 rounded-xl text-sm transition shadow">
+                    🖨️ Print Badge
+                </button>
+                <button onclick="closeSuccessModal()" class="flex-1 brand-navy hover:bg-slate-800 text-white font-semibold py-3 rounded-xl text-sm transition shadow">
+                    ➕ Register Next Member
+                </button>
+            </div>
         </div>
     </div>
 
@@ -306,9 +319,9 @@
                 });
                 const data = await res.json();
                 if (res.ok) {
-                    document.getElementById('success-reg-no').innerText = data.member.reg_number;
-                    document.getElementById('success-qr-img').src = data.member.qr_code_url;
-                    document.getElementById('reg-success-card').classList.remove('hidden');
+                    document.getElementById('modal-success-reg-no').innerText = data.member.reg_number;
+                    document.getElementById('modal-success-qr-img').src = data.member.qr_code_url;
+                    document.getElementById('registration-success-modal').classList.remove('hidden');
                     document.getElementById('registrationForm').reset();
                 } else {
                     alert(data.error || "Registration failed");
@@ -316,6 +329,10 @@
             } catch (err) {
                 alert("Network error during registration");
             }
+        }
+
+        function closeSuccessModal() {
+            document.getElementById('registration-success-modal').classList.add('hidden');
         }
 
         async function queryMember(searchTerm = null) {
@@ -538,81 +555,28 @@
                 alert(data.message);
                 document.getElementById('new_employer_name').value = '';
                 loadEmployers();
-                loadAdminEmployersDropdown();
             } else {
-                alert(data.error);
-            }
-        }
-
-        async function restoreDatabase(e) {
-            e.preventDefault();
-            if (!confirm("WARNING: Restoring a database will overwrite all current members. Are you sure?")) return;
-
-            const fileInput = document.getElementById('restore_file_input').files[0];
-            const formData = new FormData();
-            formData.append('database_file', fileInput);
-
-            try {
-                const res = await fetch('/api/admin/restore', {
-                    method: 'POST',
-                    body: formData
-                });
-                const data = await res.json();
-                if (res.ok) {
-                    alert(data.message);
-                    location.reload();
-                } else {
-                    alert(data.error || "Restore failed");
-                }
-            } catch (err) {
-                alert("Network error during database restoration");
-            }
-        }
-
-        function toggleShareableQRModal(show) {
-            const modal = document.getElementById('shareable-qr-modal');
-            if (show) {
-                const currentUrl = window.location.origin + "/";
-                document.getElementById('shareable-url-text').innerText = currentUrl;
-                document.getElementById('shareable-qr-code-img').src = `https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=${encodeURIComponent(currentUrl)}`;
-                modal.classList.remove('hidden');
-            } else {
-                modal.classList.add('hidden');
+                alert(data.error || "Failed to add employer");
             }
         }
 
         function toggleScanner(containerId) {
             const container = document.getElementById(containerId);
-            container.classList.toggle('hidden');
-            const isReg = containerId.includes('reg');
-            const readerId = isReg ? 'reader-reg' : 'reader-query';
+            const isHidden = container.classList.contains('hidden');
+            
+            if (html5QrCodeReg) { html5QrCodeReg.stop().catch(() => {}); html5QrCodeReg = null; }
+            if (html5QrCodeQuery) { html5QrCodeQuery.stop().catch(() => {}); html5QrCodeQuery = null; }
+            document.getElementById('reader-reg').innerHTML = '';
+            document.getElementById('reader-query').innerHTML = '';
+            document.getElementById('reg-scanner-container').classList.add('hidden');
+            document.getElementById('query-scanner-container').classList.add('hidden');
 
-            if (!container.classList.contains('hidden')) {
-                const scanner = new Html5Qrcode(readerId);
-                if (isReg) html5QrCodeReg = scanner; else html5QrCodeQuery = scanner;
-
-                scanner.start(
-                    { facingMode: "environment" },
-                    { fps: 10, qrbox: 250 },
-                    (decodedText) => {
-                        scanner.stop();
-                        container.classList.add('hidden');
-                        if (isReg) {
-                            alert("QR Code scanned successfully!");
-                        } else {
-                            document.getElementById('query_input').value = decodedText;
-                            queryMember(decodedText);
-                        }
-                    },
-                    (error) => {}
-                ).catch(err => alert("Camera permission denied or unavailable"));
-            } else {
-                if (isReg && html5QrCodeReg) html5QrCodeReg.stop();
-                if (!isReg && html5QrCodeQuery) html5QrCodeQuery.stop();
-            }
-        }
-
-        loadEmployers();
-    </script>
-</body>
-</html>
+            if (isHidden) {
+                container.classList.remove('hidden');
+                if (containerId === 'reg-scanner-container') {
+                    html5QrCodeReg = new Html5Qrcode("reader-reg");
+                    html5QrCodeReg.start(
+                        { facingMode: "environment" },
+                        { fps: 10, qrbox: { width: 250, height: 250 } },
+                        (decodedText) => {
+                            html5QrCodeReg.stop().catch(() => {});
