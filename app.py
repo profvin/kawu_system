@@ -157,26 +157,29 @@ def generate_reg_number():
   cursor = db.cursor()
 
   param = f'KAWU-{current_year}-%'
-  # Added 'AS total' so PostgreSQL always returns a predictable dictionary key
-  query = 'SELECT COUNT(*) AS total FROM members WHERE reg_number LIKE ' + (
+  query = 'SELECT COUNT(*) FROM members WHERE reg_number LIKE ' + (
       '%s' if is_postgres() else '?'
   )
 
   cursor.execute(query, (param,))
   res = cursor.fetchone()
 
-  if not res:
-    count = 1
-  elif isinstance(res, dict):
-    count = int(res.get('total', res.get('COUNT', 0))) + 1
-  elif isinstance(res, (tuple, list)):
-    count = int(res[0]) + 1
-  else:
+  count = 1
+  if res is not None:
     try:
-      # Fallback for RealDictRow or other row proxies
-      count = int(list(res.values())[0]) + 1
+      if isinstance(res, (tuple, list)):
+        count = int(res[0]) + 1
+      elif hasattr(res, 'keys'):
+        # Handles dictionary or psycopg2 RealDictRow
+        keys = list(res.keys())
+        count = int(res[keys[0]]) + 1
+      else:
+        count = int(res[0]) + 1
     except Exception:
-      count = 1
+      try:
+        count = int(list(res.values())[0]) + 1
+      except Exception:
+        count = 1
 
   return f'KAWU-{current_year}-{count:05d}'
 
