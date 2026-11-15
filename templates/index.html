@@ -579,13 +579,24 @@
 
             if (isHidden) {
                 container.classList.remove('hidden');
+
+                // Explicit permission pre-check for mobile browsers
+                try {
+                    if (navigator.mediaDevices && navigator.mediaDevices.getUserMedia) {
+                        const stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: "environment" } });
+                        stream.getTracks().forEach(track => track.stop());
+                    }
+                } catch (permErr) {
+                    console.warn("MediaDevices permission prompt notice:", permErr);
+                }
+
                 setTimeout(async () => {
                     try {
                         if (containerId === 'reg-scanner-container') {
                             html5QrCodeReg = new Html5Qrcode("reader-reg");
                             await html5QrCodeReg.start(
                                 { facingMode: "environment" },
-                                { fps: 10, qrbox: { width: 250, height: 250 } },
+                                { fps: 10, qrbox: { width: 220, height: 220 } },
                                 (decodedText) => {
                                     html5QrCodeReg.stop().catch(() => {});
                                     container.classList.add('hidden');
@@ -597,7 +608,7 @@
                             html5QrCodeQuery = new Html5Qrcode("reader-query");
                             await html5QrCodeQuery.start(
                                 { facingMode: "environment" },
-                                { fps: 10, qrbox: { width: 250, height: 250 } },
+                                { fps: 10, qrbox: { width: 220, height: 220 } },
                                 (decodedText) => {
                                     html5QrCodeQuery.stop().catch(() => {});
                                     container.classList.add('hidden');
@@ -607,12 +618,20 @@
                                 (errorMessage) => {}
                             );
                         }
+
+                        // Ensure video element sizing fits mobile screens
+                        const videoEl = container.querySelector('video');
+                        if (videoEl) {
+                            videoEl.style.width = "100%";
+                            videoEl.style.height = "auto";
+                            videoEl.style.borderRadius = "12px";
+                        }
                     } catch (err) {
                         console.error("Camera start error:", err);
-                        alert("Could not start camera. Please ensure camera permissions are allowed in your browser settings and you are visiting via HTTPS.");
+                        alert("Could not start camera. Please check your browser permissions to ensure camera access is allowed.");
                         container.classList.add('hidden');
                     }
-                }, 200);
+                }, 300);
             }
         }
 
