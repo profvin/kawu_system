@@ -23,7 +23,6 @@
                     <p class="text-xs text-slate-300">Member Registration & Verification System</p>
                 </div>
             </div>
-            <!-- FIXED: Navigation buttons correctly wired with onclick="switchTab(...)" -->
             <nav class="mt-4 md:mt-0 flex space-x-2 bg-slate-800 p-1 rounded-lg">
                 <button onclick="switchTab('register')" id="btn-register" class="px-4 py-2 text-sm font-semibold rounded-md bg-amber-500 text-slate-900 transition">Register</button>
                 <button onclick="switchTab('query')" id="btn-query" class="px-4 py-2 text-sm font-semibold rounded-md text-slate-300 hover:text-white transition">Verify / QR</button>
@@ -247,25 +246,25 @@
         </div>
     </div>
 
-    <!-- Prominent Success & QR Badge Overlay Modal -->
-    <div id="registration-success-modal" class="hidden fixed inset-0 bg-black/80 flex items-center justify-center p-4 z-50">
-        <div class="bg-white rounded-2xl max-w-lg w-full p-8 text-center shadow-2xl border-4 border-amber-500">
-            <div class="bg-emerald-100 text-emerald-800 font-bold text-sm px-4 py-1.5 rounded-full inline-block mb-3">
+    <!-- Prominent Success & QR Badge Overlay Modal (Mobile Optimized) -->
+    <div id="registration-success-modal" class="hidden fixed inset-0 bg-black/80 flex items-center justify-center p-3 z-50 overflow-y-auto">
+        <div class="bg-white rounded-2xl max-w-md w-full p-5 sm:p-6 text-center shadow-2xl border-4 border-amber-500 my-auto">
+            <div class="bg-emerald-100 text-emerald-800 font-bold text-xs sm:text-sm px-3 py-1 rounded-full inline-block mb-2">
                 ✓ Registration Successful
             </div>
-            <h3 class="text-2xl font-bold text-slate-900 mb-1">KAWU Member Badge</h3>
-            <p class="text-sm text-slate-500 mb-4">Registration Number: <span id="modal-success-reg-no" class="font-mono font-bold text-slate-900 text-base"></span></p>
+            <h3 class="text-xl sm:text-2xl font-bold text-slate-900 mb-1">KAWU Member Badge</h3>
+            <p class="text-xs sm:text-sm text-slate-500 mb-3">Registration Number: <span id="modal-success-reg-no" class="font-mono font-bold text-slate-900 text-sm sm:text-base"></span></p>
             
-            <div class="bg-slate-50 border-2 border-slate-200 p-4 rounded-xl inline-block mb-6 shadow-inner">
-                <img id="modal-success-qr-img" src="" alt="QR Badge" class="w-48 h-48 mx-auto">
+            <div class="bg-slate-50 border-2 border-slate-200 p-3 rounded-xl inline-block mb-4 shadow-inner">
+                <img id="modal-success-qr-img" src="" alt="QR Badge" class="w-40 h-40 sm:w-48 sm:h-48 mx-auto">
             </div>
 
-            <div class="flex flex-col sm:flex-row gap-3">
-                <button onclick="window.print()" class="flex-1 bg-emerald-600 hover:bg-emerald-700 text-white font-semibold py-3 rounded-xl text-sm transition shadow">
+            <div class="flex flex-col sm:flex-row gap-2.5">
+                <button onclick="window.print()" class="flex-1 bg-emerald-600 hover:bg-emerald-700 text-white font-semibold py-2.5 sm:py-3 rounded-xl text-xs sm:text-sm transition shadow">
                     🖨️ Print Badge
                 </button>
-                <button onclick="closeSuccessModal()" class="flex-1 brand-navy hover:bg-slate-800 text-white font-semibold py-3 rounded-xl text-sm transition shadow">
-                    ➕ Register Next Member
+                <button onclick="closeSuccessModal()" class="flex-1 brand-navy hover:bg-slate-800 text-white font-semibold py-2.5 sm:py-3 rounded-xl text-xs sm:text-sm transition shadow">
+                    ➕ Register Next
                 </button>
             </div>
         </div>
@@ -561,12 +560,18 @@
             }
         }
 
-        function toggleScanner(containerId) {
+        async function toggleScanner(containerId) {
             const container = document.getElementById(containerId);
             const isHidden = container.classList.contains('hidden');
             
-            if (html5QrCodeReg) { html5QrCodeReg.stop().catch(() => {}); html5QrCodeReg = null; }
-            if (html5QrCodeQuery) { html5QrCodeQuery.stop().catch(() => {}); html5QrCodeQuery = null; }
+            if (html5QrCodeReg) {
+                try { await html5QrCodeReg.stop(); } catch (e) {}
+                html5QrCodeReg = null;
+            }
+            if (html5QrCodeQuery) {
+                try { await html5QrCodeQuery.stop(); } catch (e) {}
+                html5QrCodeQuery = null;
+            }
             document.getElementById('reader-reg').innerHTML = '';
             document.getElementById('reader-query').innerHTML = '';
             document.getElementById('reg-scanner-container').classList.add('hidden');
@@ -574,32 +579,40 @@
 
             if (isHidden) {
                 container.classList.remove('hidden');
-                if (containerId === 'reg-scanner-container') {
-                    html5QrCodeReg = new Html5Qrcode("reader-reg");
-                    html5QrCodeReg.start(
-                        { facingMode: "environment" },
-                        { fps: 10, qrbox: { width: 250, height: 250 } },
-                        (decodedText) => {
-                            html5QrCodeReg.stop().catch(() => {});
-                            container.classList.add('hidden');
-                            parseScannedDataForRegistration(decodedText);
-                        },
-                        () => {}
-                    ).catch(err => alert("Camera error: " + err));
-                } else {
-                    html5QrCodeQuery = new Html5Qrcode("reader-query");
-                    html5QrCodeQuery.start(
-                        { facingMode: "environment" },
-                        { fps: 10, qrbox: { width: 250, height: 250 } },
-                        (decodedText) => {
-                            html5QrCodeQuery.stop().catch(() => {});
-                            container.classList.add('hidden');
-                            document.getElementById('query_input').value = decodedText;
-                            queryMember(decodedText);
-                        },
-                        () => {}
-                    ).catch(err => alert("Camera error: " + err));
-                }
+                setTimeout(async () => {
+                    try {
+                        if (containerId === 'reg-scanner-container') {
+                            html5QrCodeReg = new Html5Qrcode("reader-reg");
+                            await html5QrCodeReg.start(
+                                { facingMode: "environment" },
+                                { fps: 10, qrbox: { width: 250, height: 250 } },
+                                (decodedText) => {
+                                    html5QrCodeReg.stop().catch(() => {});
+                                    container.classList.add('hidden');
+                                    parseScannedDataForRegistration(decodedText);
+                                },
+                                (errorMessage) => {}
+                            );
+                        } else {
+                            html5QrCodeQuery = new Html5Qrcode("reader-query");
+                            await html5QrCodeQuery.start(
+                                { facingMode: "environment" },
+                                { fps: 10, qrbox: { width: 250, height: 250 } },
+                                (decodedText) => {
+                                    html5QrCodeQuery.stop().catch(() => {});
+                                    container.classList.add('hidden');
+                                    document.getElementById('query_input').value = decodedText;
+                                    queryMember(decodedText);
+                                },
+                                (errorMessage) => {}
+                            );
+                        }
+                    } catch (err) {
+                        console.error("Camera start error:", err);
+                        alert("Could not start camera. Please ensure camera permissions are allowed in your browser settings and you are visiting via HTTPS.");
+                        container.classList.add('hidden');
+                    }
+                }, 200);
             }
         }
 
